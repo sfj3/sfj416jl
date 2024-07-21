@@ -1,6 +1,6 @@
 #include <stdio.h>
-#include <cuda_runtime.h>
 #include <math.h>
+#include <cuda_runtime.h>
 
 #define PI 3.14159265358979323846
 
@@ -8,36 +8,36 @@
 #define cudaCheckError(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true) {
    if (code != cudaSuccess) 
-   {
+    {
       fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
       if (abort) exit(code);
    }
 }
 
-// CUDA kernel for 1D heat conduction analytical solution
+// Corrected CUDA kernel for 1D heat conduction analytical solution
 __global__ void heatConductionKernel(float *T, float T_hot, float T_cold, float L, float alpha, float t, int N, int n_terms) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < N) {
         float x = idx * L / (N - 1);
-        float sum = 0;
+        float sum = 0.0f;
         for (int n = 1; n <= n_terms; n++) {
-            float term = sin(n * PI * x / L) * exp(-alpha * n * n * PI * PI * t / (L * L)) / n;
-            sum += term;
+            sum += 1.0f / n * sinf(n * PI * x / L) * expf(-alpha * n * n * PI * PI * t / (L * L));
         }
-        T[idx] = T_cold + (T_hot - T_cold) * (1 - x / L - 2 / PI * sum);
+        T[idx] = T_cold + (T_hot - T_cold) * (1.0f - x / L) + 
+                 2.0f * (T_hot - T_cold) / PI * sum;
     }
 }
 
 int main() {
-    const int N = 100; // Number of spatial points
+    const int N = 1000; // Number of spatial points
     const float L = 1.0f; // Length of the rod in meters
-    const float T_hot = 1000.0f; // Hot end temperature in Kelvin
-    const float T_cold = 280.0f; // Cold end temperature in Kelvin
+    const float T_hot = 600.0f; // Hot end temperature in Kelvin
+    const float T_cold = 300.0f; // Cold end temperature in Kelvin
     const float k = 1.5f; // Thermal conductivity in W/(m·K)
     const float rho = 8000.0f; // Density in kg/m^3
     const float c = 500.0f; // Specific heat capacity in J/(kg·K)
     const float alpha = k / (rho * c); // Thermal diffusivity
-    const float total_time = 10.0f; // Total simulation time in seconds
+    const float total_time = 600.0f; // Total simulation time in seconds
     const int time_steps = 10; // Number of time steps to display
     const int n_terms = 100; // Number of terms in the Fourier series
 
