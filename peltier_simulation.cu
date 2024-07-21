@@ -15,11 +15,14 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 }
 
 // CUDA kernel for 1D heat conduction numerical solution
-__global__ void heatConductionKernel(float *T, float T_hot, float T_cold, float L, float alpha, float dt, float dx, int N) {
+__global__ void heatConductionKernel(float *T, float *T_new, float T_hot, float T_cold, float alpha, float dt, float dx, int N) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx > 0 && idx < N - 1) {
-        float T_new = T[idx] + alpha * dt / (dx * dx) * (T[idx+1] - 2*T[idx] + T[idx-1]);
-        T[idx] = T_new;
+    if (idx == 0) {
+        T_new[idx] = T_cold; // Cold end boundary condition
+    } else if (idx == N - 1) {
+        T_new[idx] = T_hot; // Hot end boundary condition
+    } else if (idx < N) {
+        T_new[idx] = T[idx] + alpha * dt / (dx * dx) * (T[idx + 1] - 2 * T[idx] + T[idx - 1]);
     }
 }
 
@@ -76,7 +79,7 @@ int main() {
         .contact_resistance = 1e-5f // Ohm
     };
 
-    float *d_T; // Device array for temperatures
+    float *d_T, *d_T_new; // Device arrays for temperatures
     float *h_T; // Host array for temperatures
 
     // Allocate memory on the CPU
@@ -89,6 +92,7 @@ int main() {
 
     // Allocate memory on the GPU
     cudaCheckError(cudaMalloc(&d_T, N * sizeof(float)));
+    cudaCheckError(cudaMalloc(&d_T_new, N * sizeof(float)));
     cudaCheckError(cudaMemcpy(d_T, h_T, N * sizeof(float), cudaMemcpyHostToDevice));
 
     // Define block and grid dimensions
@@ -109,8 +113,9 @@ int main() {
         float t = step * dt;
         
         // Update temperature distribution
-        heatConductionKernel<<<blocksPerGrid, threadsPerBlock>>>(d_T, T_hot, T_cold, L, alpha, dt, dx, N);
+        heatConductionKernel<<<blocksPerGrid, threadsPerBlock>>>(d_T, d_T_new, T_hot, T_cold, alpha, dt, dx, N);
         cudaCheckError(cudaGetLastError());
+        cudaCheckError(cudaMemcpy(d_T, d_T_new, N * sizeof(float), cudaMemcpyDeviceToDevice));
 
         if (step % (time_steps / 10) == 0) {
             // Copy temperatures back to CPU
@@ -128,6 +133,7 @@ int main() {
     // Free memory
     free(h_T);
     cudaCheckError(cudaFree(d_T));
+    cudaCheckError(cudaFree(d_T_new));
 
     return 0;
 }
