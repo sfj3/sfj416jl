@@ -55,9 +55,9 @@ void calculatePeltierPerformance(float T_hot, float T_cold, PeltierDevice device
 
 int main() {
     const int N = 1000; // Number of spatial points
-    const float L = 0.1f; // Length of the rod in meters
-    const float T_hot = 600.0f; // Hot end temperature in Kelvin
-    const float T_cold = 280.0f; // Cold end temperature in Kelvin
+    const float L = 1.1f; // Length of the rod in meters
+    const float T_hot = 500.0f; // Hot end temperature in Kelvin
+    const float T_cold = 300.0f; // Cold end temperature in Kelvin
     const float k = 1.5f; // Thermal conductivity of the rod in W/(m·K)
     const float rho = 8000.0f; // Density of the rod in kg/m^3
     const float c = 500.0f; // Specific heat capacity of the rod in J/(kg·K)
